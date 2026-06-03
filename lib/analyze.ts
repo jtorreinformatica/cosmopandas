@@ -62,28 +62,38 @@ export async function analyzeWithRS(ticker: string, spyDailyPrices: number[]) {
   return { ...signal, rs };
 }
 
-export async function getStockScreenerData(ticker: string) {
-  const [dailyData, weeklyData] = await Promise.all([
-    getOHLCV(ticker, "daily"),
-    getOHLCV(ticker, "weekly"),
+export async function getStockScreenerData(
+  ticker: string,
+  analysisTf: "daily" | "weekly" = "weekly"
+) {
+  const [analysisData, weeklyData] = await Promise.all([
+    getOHLCV(ticker, analysisTf),
+    analysisTf === "weekly" ? Promise.resolve(null) : getOHLCV(ticker, "weekly"),
   ]);
-  if (dailyData.length === 0) return null;
 
-  const closes = dailyData.map((d) => d.close);
-  const volumes = dailyData.map((d) => d.volume);
+  const tfData = analysisData;
+  const chartData = analysisTf === "weekly" ? analysisData : (weeklyData ?? analysisData);
+
+  if (tfData.length === 0) return null;
+
+  const closes = tfData.map((d) => d.close);
+  const volumes = tfData.map((d) => d.volume);
 
   const latestClose = closes[closes.length - 1];
-  const high52w = Math.max(...closes.slice(-252));
-  const distFromHigh = latestClose / high52w; // 1.0 = at high, 0.9 = 10% below
 
+  // 52-week high: use last 52 weekly bars OR last 252 daily bars
+  const lookback = analysisTf === "weekly" ? 52 : 252;
+  const high52w = Math.max(...closes.slice(-lookback));
+  const distFromHigh = latestClose / high52w;
+
+  // Relative volume: 20-period avg on selected timeframe
   const avgVol20 = volumes.slice(-20).reduce((a, b) => a + b, 0) / 20;
   const latestVol = volumes[volumes.length - 1];
   const relVolume = avgVol20 > 0 ? latestVol / avgVol20 : 1;
 
   const signal = await analyzeTickerSignals(ticker);
 
-  // Weekly chart data (last 26 weeks)
-  const weeklyChart = weeklyData.slice(-26).map((d) => ({
+  const weeklyChart = chartData.slice(-26).map((d) => ({
     date: d.date.toISOString().split("T")[0],
     open: d.open,
     high: d.high,
@@ -94,6 +104,7 @@ export async function getStockScreenerData(ticker: string) {
 
   return {
     ...signal,
+    analysisTf,
     latestClose,
     high52w,
     distFromHigh,

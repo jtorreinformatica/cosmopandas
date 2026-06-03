@@ -35,6 +35,7 @@ interface ScreenerStock {
 
 interface ScreenerData {
   etf: string;
+  analysisTf: "daily" | "weekly";
   promising: ScreenerStock[];
   all: ScreenerStock[];
 }
@@ -69,14 +70,16 @@ function SectorScreener({ etf, onClose }: { etf: string; onClose: () => void }) 
   const [data, setData] = useState<ScreenerData | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
+  const [tf, setTf] = useState<"weekly" | "daily">("weekly");
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/screener/${etf}`)
+    setData(null);
+    fetch(`/api/screener/${etf}?tf=${tf}`)
       .then((r) => r.json())
       .then((d) => { setData(d); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [etf]);
+  }, [etf, tf]);
 
   const stocks = showAll ? data?.all : data?.promising;
 
@@ -93,12 +96,30 @@ function SectorScreener({ etf, onClose }: { etf: string; onClose: () => void }) 
               </span>
             )}
           </div>
-          <button
-            onClick={() => setShowAll((v) => !v)}
-            className="text-xs text-zinc-400 hover:text-zinc-200 px-2 py-1 rounded border border-zinc-700 hover:border-zinc-500 transition-colors"
-          >
-            {showAll ? "Show Promising" : "Show All"}
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Timeframe toggle */}
+            <div className="flex items-center rounded border border-zinc-700 overflow-hidden text-xs">
+              {(["weekly", "daily"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTf(t)}
+                  className={`px-2.5 py-1 transition-colors ${
+                    tf === t
+                      ? "bg-blue-600 text-white"
+                      : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+                  }`}
+                >
+                  {t === "weekly" ? "W" : "D"}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowAll((v) => !v)}
+              className="text-xs text-zinc-400 hover:text-zinc-200 px-2 py-1 rounded border border-zinc-700 hover:border-zinc-500 transition-colors"
+            >
+              {showAll ? "Promising" : "All"}
+            </button>
+          </div>
         </div>
 
         {loading && (

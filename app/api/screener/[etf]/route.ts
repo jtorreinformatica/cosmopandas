@@ -5,10 +5,13 @@ import { getStockScreenerData } from "@/lib/analyze";
 export const dynamic = "force-dynamic";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ etf: string }> }
 ) {
   const { etf } = await params;
+  const tf = (req.nextUrl.searchParams.get("tf") ?? "weekly") as "daily" | "weekly";
+  const analysisTf = tf === "daily" ? "daily" : "weekly";
+
   const holdings = await getHoldings(etf);
 
   if (holdings.length === 0) {
@@ -17,7 +20,7 @@ export async function GET(
 
   try {
     const results = await Promise.allSettled(
-      holdings.map((ticker) => getStockScreenerData(ticker))
+      holdings.map((ticker) => getStockScreenerData(ticker, analysisTf))
     );
 
     const stocks = results
@@ -27,7 +30,7 @@ export async function GET(
     const promising = stocks.filter((s) => s?.isPromising);
     const all = stocks;
 
-    return NextResponse.json({ etf, promising, all });
+    return NextResponse.json({ etf, analysisTf, promising, all });
   } catch (error) {
     console.error("[screener]", error);
     return NextResponse.json({ error: "Failed to fetch screener data" }, { status: 500 });
