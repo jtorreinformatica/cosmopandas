@@ -70,7 +70,7 @@ function SectorScreener({ etf, onClose }: { etf: string; onClose: () => void }) 
   const [data, setData] = useState<ScreenerData | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
-  const [tf, setTf] = useState<"weekly" | "daily">("weekly");
+  const [tf, setTf] = useState<"weekly" | "daily">("daily");
 
   useEffect(() => {
     setLoading(true);

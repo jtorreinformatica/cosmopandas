@@ -64,7 +64,7 @@ export async function analyzeWithRS(ticker: string, spyDailyPrices: number[]) {
 
 export async function getStockScreenerData(
   ticker: string,
-  analysisTf: "daily" | "weekly" = "weekly"
+  analysisTf: "daily" | "weekly" = "daily"
 ) {
   const [analysisData, weeklyData] = await Promise.all([
     getOHLCV(ticker, analysisTf),

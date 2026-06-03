@@ -9,8 +9,8 @@ export async function GET(
   { params }: { params: Promise<{ etf: string }> }
 ) {
   const { etf } = await params;
-  const tf = (req.nextUrl.searchParams.get("tf") ?? "weekly") as "daily" | "weekly";
-  const analysisTf = tf === "daily" ? "daily" : "weekly";
+  const tf = (req.nextUrl.searchParams.get("tf") ?? "daily") as "daily" | "weekly";
+  const analysisTf = tf === "weekly" ? "weekly" : "daily";
 
   const holdings = await getHoldings(etf);
 
