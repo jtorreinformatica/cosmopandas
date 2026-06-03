@@ -9,7 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ etf: string }> }
 ) {
   const { etf } = await params;
-  const holdings = getHoldings(etf);
+  const holdings = await getHoldings(etf);
 
   if (holdings.length === 0) {
     return NextResponse.json({ error: `No holdings found for ${etf}` }, { status: 404 });
