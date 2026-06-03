@@ -64,11 +64,13 @@ export async function analyzeWithRS(ticker: string, spyDailyPrices: number[]) {
 
 export async function getStockScreenerData(
   ticker: string,
-  analysisTf: "daily" | "weekly" = "daily"
+  analysisTf: "daily" | "weekly" = "daily",
+  spyDailyPrices?: number[]
 ) {
-  const [analysisData, weeklyData] = await Promise.all([
+  const [analysisData, weeklyData, spyPrices] = await Promise.all([
     getOHLCV(ticker, analysisTf),
     analysisTf === "weekly" ? Promise.resolve(null) : getOHLCV(ticker, "weekly"),
+    spyDailyPrices ? Promise.resolve(spyDailyPrices) : getClosePrices("SPY", "daily"),
   ]);
 
   const tfData = analysisData;
@@ -81,15 +83,18 @@ export async function getStockScreenerData(
 
   const latestClose = closes[closes.length - 1];
 
-  // 52-week high: use last 52 weekly bars OR last 252 daily bars
   const lookback = analysisTf === "weekly" ? 52 : 252;
   const high52w = Math.max(...closes.slice(-lookback));
   const distFromHigh = latestClose / high52w;
 
-  // Relative volume: 20-period avg on selected timeframe
   const avgVol20 = volumes.slice(-20).reduce((a, b) => a + b, 0) / 20;
   const latestVol = volumes[volumes.length - 1];
   const relVolume = avgVol20 > 0 ? latestVol / avgVol20 : 1;
+
+  // RS always computed from daily prices
+  const dailyForRS =
+    analysisTf === "daily" ? closes : await getClosePrices(ticker, "daily");
+  const rs = calculateRS(dailyForRS, spyPrices);
 
   const signal = await analyzeTickerSignals(ticker);
 
@@ -105,6 +110,7 @@ export async function getStockScreenerData(
   return {
     ...signal,
     analysisTf,
+    rs,
     latestClose,
     high52w,
     distFromHigh,

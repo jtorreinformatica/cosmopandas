@@ -14,6 +14,8 @@ interface StockCardProps {
   latestClose: number;
   distFromHigh: number;
   relVolume: number;
+  rs?: number;
+  sectors?: string[];
   weeklyChart: Array<{ date: string; open: number; high: number; low: number; close: number; volume: number }>;
 }
 
@@ -26,6 +28,8 @@ export function StockCard({
   latestClose,
   distFromHigh,
   relVolume,
+  rs,
+  sectors,
   weeklyChart,
 }: StockCardProps) {
   const pctFromHigh = ((1 - distFromHigh) * 100).toFixed(1);
@@ -37,7 +41,14 @@ export function StockCard({
           <Semaphore color={overallColor} size="sm" />
           <span className="font-bold text-zinc-100 text-sm">{ticker}</span>
         </div>
-        <span className="text-zinc-300 text-xs font-mono">${latestClose.toFixed(2)}</span>
+        <div className="flex items-center gap-1.5">
+          {rs != null && (
+            <span className={`text-xs font-mono ${rs > 1.1 ? "text-emerald-400" : rs > 1 ? "text-amber-400" : "text-zinc-500"}`}>
+              RS {rs.toFixed(2)}
+            </span>
+          )}
+          <span className="text-zinc-300 text-xs font-mono">${latestClose.toFixed(2)}</span>
+        </div>
       </div>
 
       <MiniChart data={weeklyChart} ticker={ticker} />
@@ -53,6 +64,19 @@ export function StockCard({
           </div>
         </div>
       </div>
+
+      {sectors && sectors.length > 0 && (
+        <div className="flex flex-wrap gap-1 pt-0.5 border-t border-zinc-800">
+          {sectors.slice(0, 4).map((etf) => (
+            <span key={etf} className="text-xs text-zinc-500 bg-zinc-800 px-1.5 py-0.5 rounded font-mono">
+              {etf}
+            </span>
+          ))}
+          {sectors.length > 4 && (
+            <span className="text-xs text-zinc-600">+{sectors.length - 4}</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

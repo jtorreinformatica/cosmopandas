@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getHoldings } from "@/lib/holdings";
 import { getStockScreenerData } from "@/lib/analyze";
+import { getClosePrices } from "@/lib/yahoo";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,10 @@ export async function GET(
   const tf = (req.nextUrl.searchParams.get("tf") ?? "daily") as "daily" | "weekly";
   const analysisTf = tf === "weekly" ? "weekly" : "daily";
 
-  const holdings = await getHoldings(etf);
+  const [holdings, spyPrices] = await Promise.all([
+    getHoldings(etf),
+    getClosePrices("SPY", "daily"),
+  ]);
 
   if (holdings.length === 0) {
     return NextResponse.json({ error: `No holdings found for ${etf}` }, { status: 404 });
@@ -20,15 +24,17 @@ export async function GET(
 
   try {
     const results = await Promise.allSettled(
-      holdings.map((ticker) => getStockScreenerData(ticker, analysisTf))
+      holdings.map((ticker) => getStockScreenerData(ticker, analysisTf, spyPrices))
     );
 
     const stocks = results
       .map((r) => (r.status === "fulfilled" ? r.value : null))
       .filter(Boolean);
 
-    const promising = stocks.filter((s) => s?.isPromising);
-    const all = stocks;
+    const promising = stocks
+      .filter((s) => s?.isPromising)
+      .sort((a, b) => (b?.rs ?? 0) - (a?.rs ?? 0));
+    const all = stocks.sort((a, b) => (b?.rs ?? 0) - (a?.rs ?? 0));
 
     return NextResponse.json({ etf, analysisTf, promising, all });
   } catch (error) {

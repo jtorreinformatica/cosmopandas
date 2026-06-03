@@ -29,6 +29,8 @@ interface ScreenerStock {
   latestClose: number;
   distFromHigh: number;
   relVolume: number;
+  rs?: number;
+  sectors?: string[];
   weeklyChart: Array<{ date: string; open: number; high: number; low: number; close: number; volume: number }>;
   isPromising: boolean;
 }
@@ -38,6 +40,12 @@ interface ScreenerData {
   analysisTf: "daily" | "weekly";
   promising: ScreenerStock[];
   all: ScreenerStock[];
+}
+
+interface GlobalScreenerData {
+  analysisTf: "daily" | "weekly";
+  totalScanned: number;
+  promising: ScreenerStock[];
 }
 
 function SectionHeader({ title, badge }: { title: string; badge?: React.ReactNode }) {
@@ -155,6 +163,12 @@ export default function Dashboard() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [showSpecific, setShowSpecific] = useState(false);
 
+  // Global screener state
+  const [globalScreener, setGlobalScreener] = useState<GlobalScreenerData | null>(null);
+  const [loadingGlobal, setLoadingGlobal] = useState(false);
+  const [globalTf, setGlobalTf] = useState<"daily" | "weekly">("daily");
+  const [globalLoaded, setGlobalLoaded] = useState(false);
+
   const fetchDashboard = useCallback(async () => {
     setLoadingDash(true);
     try {
@@ -173,6 +187,17 @@ export default function Dashboard() {
       setSectors(await r.json());
     } finally {
       setLoadingSectors(false);
+    }
+  }, []);
+
+  const fetchGlobal = useCallback(async (tf: "daily" | "weekly") => {
+    setLoadingGlobal(true);
+    try {
+      const r = await fetch(`/api/screener/all?tf=${tf}`);
+      setGlobalScreener(await r.json());
+      setGlobalLoaded(true);
+    } finally {
+      setLoadingGlobal(false);
     }
   }, []);
 
@@ -313,6 +338,90 @@ export default function Dashboard() {
                   >
                     <TickerRow {...s} close={s.daily.close} compact />
                   </button>
+                ))}
+              </div>
+            )
+          )}
+        </section>
+
+        {/* Global Promising Stocks */}
+        <section>
+          <div className="flex items-center gap-3 mb-3">
+            <h2 className="text-zinc-300 text-xs font-semibold uppercase tracking-widest">
+              Promising Stocks
+            </h2>
+            {globalLoaded && globalScreener && (
+              <span className="text-zinc-500 text-xs">
+                {globalScreener.promising.length} found · {globalScreener.totalScanned} scanned
+              </span>
+            )}
+            <div className="flex-1 h-px bg-zinc-800" />
+            {/* Timeframe toggle */}
+            <div className="flex items-center rounded border border-zinc-700 overflow-hidden text-xs">
+              {(["daily", "weekly"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => {
+                    setGlobalTf(t);
+                    if (globalLoaded) fetchGlobal(t);
+                  }}
+                  className={`px-2.5 py-1 transition-colors ${
+                    globalTf === t
+                      ? "bg-blue-600 text-white"
+                      : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+                  }`}
+                >
+                  {t === "daily" ? "D" : "W"}
+                </button>
+              ))}
+            </div>
+            {!globalLoaded ? (
+              <button
+                onClick={() => fetchGlobal(globalTf)}
+                disabled={loadingGlobal}
+                className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-100 px-2.5 py-1 rounded border border-zinc-700 hover:border-zinc-500 transition-colors disabled:opacity-40"
+              >
+                {loadingGlobal ? <RefreshCw size={11} className="animate-spin" /> : null}
+                {loadingGlobal ? "Scanning…" : "Load"}
+              </button>
+            ) : (
+              <button
+                onClick={() => fetchGlobal(globalTf)}
+                disabled={loadingGlobal}
+                className="text-zinc-600 hover:text-zinc-400 disabled:opacity-40"
+                title="Refresh"
+              >
+                <RefreshCw size={12} className={loadingGlobal ? "animate-spin" : ""} />
+              </button>
+            )}
+          </div>
+
+          {loadingGlobal && (
+            <div className="flex flex-col items-center justify-center py-12 gap-2">
+              <RefreshCw size={20} className="text-zinc-500 animate-spin" />
+              <span className="text-xs text-zinc-500">Scanning all sectors… this may take ~30s</span>
+            </div>
+          )}
+
+          {!loadingGlobal && !globalLoaded && (
+            <div className="flex justify-center py-10">
+              <button
+                onClick={() => fetchGlobal(globalTf)}
+                className="flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-100 px-4 py-2 rounded-lg border border-zinc-700 hover:border-zinc-500 transition-colors"
+              >
+                <RefreshCw size={14} />
+                Scan all sectors for promising stocks
+              </button>
+            </div>
+          )}
+
+          {!loadingGlobal && globalLoaded && globalScreener && (
+            globalScreener.promising.length === 0 ? (
+              <p className="text-center text-zinc-500 py-8 text-sm">No promising stocks found across all sectors.</p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                {globalScreener.promising.map((s) => (
+                  <StockCard key={s.ticker} {...s} />
                 ))}
               </div>
             )
