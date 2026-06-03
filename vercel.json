@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "app/api/sectors/route.ts": { "maxDuration": 60 },
+    "app/api/screener/[etf]/route.ts": { "maxDuration": 60 },
+    "app/api/dashboard/route.ts": { "maxDuration": 30 }
+  }
+}
